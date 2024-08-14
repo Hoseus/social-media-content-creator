@@ -1,0 +1,88 @@
+quarkus:
+  devservices:
+    enabled: false
+  analytics:
+    disabled: true
+  application:
+    name: "social-media-content-creator"
+  log:
+    category:
+      "org.jboss.resteasy.reactive.client.logging":
+        level: DEBUG
+  rest-client:
+    logging:
+      scope: request-response
+    tts-api:
+      url: http://localhost:5002/api/tts
+    reddit-api:
+      url: https://www.reddit.com
+      follow-redirects: true
+  opentelemetry:
+    enabled: true
+    tracer:
+      exporter:
+        otlp:
+          enabled: false
+  datasource:
+    db-kind: postgresql
+
+app:
+  sensitivity:
+    implementation: "no-op"
+    mappings:
+      kill: person-delete
+      killed: person-deleted
+      murder: person-delete
+      murdered: person-deleted
+      suicide: self-delete
+      suicided: self-deleted
+      death: life-delete
+      die: life-delete
+      died: life-deleted
+      sex: tiranosaurus-seggs
+      sexual: seggsual
+      sexually: seggsually
+      sexualize: seggsualize
+      sexualized: seggsualized
+      rape: grape
+      raped: graped
+      assault: as-salt
+      assaulted: as-salted
+      lesbian: raibow-flag
+      homosexual: hormone-seggsual
+      gay: raibow-flag
+      trans: trains
+      transexual: train-seggsual
+  transcript:
+    batch:
+      size: 8
+  tts:
+    batch:
+      size: 1
+    coqui-tts:
+      model-name: "tts_models/multilingual/multi-dataset/xtts_v2"
+      female-speaker-idx: "Tammy Grit"
+      male-speaker-idx: "Dionisio Schuyler"
+      use-cuda: true
+  subtitle:
+    implementation: "mfa"
+    batch:
+      size: 8
+    mfa:
+      beam: 1000
+      tmp-dir: ${app.media.tmp.dir}/services/mfa
+  media-editor:
+    batch:
+      size: 8
+    ffmpeg:
+      tmp-dir: ${app.media.tmp.dir}/services/ffmpeg
+  media:
+    dir: ./media
+    input:
+      dir: ${app.media.dir}/input
+      videos-dir: ${app.media.input.dir}/videos
+      silences-dir: ${app.media.input.dir}/silences
+    tmp:
+      dir: ${app.media.dir}/tmp
+    output:
+      dir: ${app.media.dir}/output

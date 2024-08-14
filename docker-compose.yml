@@ -1,0 +1,69 @@
+services:
+  tts:
+    container_name: coqui_tts
+    image: ghcr.io/coqui-ai/tts:latest
+    environment:
+      - COQUI_TOS_AGREED=1
+    stdin_open: true
+    tty: true
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    volumes:
+      - ./media/tmp/services/coqui-tts:/root/tts-output
+    entrypoint: ["/bin/bash"]
+
+  stt:
+    container_name: whisperx
+    image: thomasvvugt/whisperx:cuda118
+    stdin_open: true
+    tty: true
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    volumes:
+      - ./media/tmp/services/whisperx:/app
+      - whisperxcache:/root/.cache
+    entrypoint: ["/bin/bash"]
+
+  ffmpeg:
+    container_name: ffmpeg
+    image: lscr.io/linuxserver/ffmpeg:latest
+    stdin_open: true
+    tty: true
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [ gpu ]
+    volumes:
+      - ./media/tmp/services/ffmpeg:/data
+    entrypoint: ["/bin/sh"]
+
+  stt2:
+    container_name: mfa
+    image: mmcauliffe/montreal-forced-aligner:latest
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./media/tmp/services/mfa:/data
+    entrypoint: [ "/bin/bash" ]
+
+  stt3:
+    container_name: gentle
+    image: lowerquality/gentle:latest
+    ports:
+      - "8765:8765"
+
+volumes:
+  whisperxcache:

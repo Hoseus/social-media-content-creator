@@ -1,0 +1,74 @@
+####
+# This Dockerfile is used in order to build a container that runs the Quarkus application in native (no JVM) mode.
+#
+# Before building the container image run:
+#
+# ./gradlew build -Dquarkus.native.enabled=true
+#
+# Then, build the image with:
+#
+# docker build -f src/main/docker/Dockerfile.native -t quarkus/social-media-content-creator .
+#
+# Then run the container using:
+#
+# docker run -i --rm -p 8080:8080 quarkus/social-media-content-creator
+#
+###
+FROM registry.access.redhat.com/ubi8/ubi-minimal:8.9
+
+SHELL ["/bin/bash", "-c"]
+
+# Install dependencies
+RUN microdnf update \
+    && microdnf install -y \
+        python3.12 \
+        python3.12-pip \
+        tar \
+        xz \
+        dejavu-sans-fonts \
+    && ln -sf /usr/bin/pip3 /usr/bin/pip
+
+# Install coqui tts
+ENV COQUI_TOS_AGREED=1
+RUN pip install coqui-tts
+
+# Install mfa
+ARG CONDA_ROOT_PREFIX=/conda
+ENV MFA_ROOT_DIR=/mfa
+RUN mkdir -p ${CONDA_ROOT_PREFIX} \
+    && curl -o ${CONDA_ROOT_PREFIX}/miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh \
+    && bash ${CONDA_ROOT_PREFIX}/miniconda.sh -b -u -p ${CONDA_ROOT_PREFIX} \
+    && rm -f ${CONDA_ROOT_PREFIX}/miniconda.sh \
+    && if [ ! -e /usr/bin/conda ]; then ln -sf ${CONDA_ROOT_PREFIX}/bin/conda /usr/bin/conda; fi
+RUN mkdir -p ${MFA_ROOT_DIR} \
+    && conda create -p ${MFA_ROOT_DIR} -c conda-forge montreal-forced-aligner -y \
+    && conda run -p ${MFA_ROOT_DIR} mfa model download acoustic english_us_arpa \
+    && conda run -p ${MFA_ROOT_DIR} mfa model download dictionary english_us_arpa \
+    && echo -e '#!/bin/bash\nconda run -p ${MFA_ROOT_DIR} mfa "$@"' > /usr/bin/mfa \
+    && chmod +x /usr/bin/mfa
+
+# Install ffmpeg
+ARG FFMPEG_STATIC_DIR=/ffmpeg-static
+RUN mkdir -p ${FFMPEG_STATIC_DIR} \
+    && curl -o ${FFMPEG_STATIC_DIR}.tar.xz https://johnvansickle.com/ffmpeg/builds/ffmpeg-git-amd64-static.tar.xz \
+    && tar -xvf ${FFMPEG_STATIC_DIR}.tar.xz -C ${FFMPEG_STATIC_DIR} --strip-components 1 \
+    && mv ${FFMPEG_STATIC_DIR}/ffmpeg ${FFMPEG_STATIC_DIR}/ffprobe /usr/bin/ \
+    && rm -rf ${FFMPEG_STATIC_DIR}.tar.xz ${FFMPEG_STATIC_DIR}
+
+# Directories used by CLIs
+ENV APP_DIR=/app
+RUN mkdir -p ${APP_DIR}/media/{input/{videos,silences},tmp,output} /.cache /.config /.local /root/.local/share/tts
+
+RUN chown -R 1000:1000 ${APP_DIR} ${MFA_ROOT_DIR} /.cache /.config /.local /root/.local/share/tts
+
+ENV WORK_DIR=/work
+WORKDIR ${WORK_DIR}
+RUN chown 1000 ${WORK_DIR} \
+    && chmod "g+rwX" ${WORK_DIR} \
+    && chown 1000:1000 ${WORK_DIR}
+COPY --chown=1000:1000 build/*-runner ${WORK_DIR}/application
+
+EXPOSE 8080
+USER 1000:1000
+
+ENTRYPOINT ["./application", "-Dquarkus.http.host=0.0.0.0", "-Dapp.dir=${APP_DIR}"]

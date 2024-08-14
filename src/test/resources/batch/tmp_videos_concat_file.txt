@@ -1,0 +1,2 @@
+file 'test/resources/batch/batch_tmp_video_part_0.mp4'
+file 'test/resources/batch/batch_tmp_video_part_1.mp4'

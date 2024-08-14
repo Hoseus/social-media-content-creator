@@ -1,0 +1,39 @@
+services:
+  tts:
+    container_name: coqui_tts
+    image: ghcr.io/coqui-ai/tts-cpu:latest
+    environment:
+      - COQUI_TOS_AGREED=1
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./media/tmp:/root/tts-output
+    entrypoint: ["/bin/bash"]
+
+  stt:
+    container_name: whisperx
+    image: thomasvvugt/whisperx:cuda118
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./media/tmp:/app
+      - whisperxcache:/root/.cache
+    entrypoint: [ "/bin/bash" ]
+
+  stt2:
+    container_name: mfa
+    image: mmcauliffe/montreal-forced-aligner:latest
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./media/tmp:/data
+    entrypoint: [ "/bin/bash" ]
+
+  stt3:
+    container_name: gentle
+    image: lowerquality/gentle:latest
+    ports:
+      - "8765:8765"
+
+volumes:
+  whisperxcache:
